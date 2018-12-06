@@ -1,5 +1,6 @@
 import cv2
 import imutils
+from PIL import ImageTk
 
 imagePath = "../../resources/img/tabular_data2_ori.png"
 ori_img = cv2.imread(imagePath)

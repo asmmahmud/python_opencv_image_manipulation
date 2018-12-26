@@ -36,8 +36,8 @@ combined_list = sorted(combined_list, key=lambda b: b[1], reverse=False)
 
 print(len(rect_list))
 if len(rect_list) == 2:
-    cv2.imshow("rect-1", omrutils.find_rect_by_ratio(rect_list[0], 80, 25, 1.2, .7))
-    cv2.imshow("rect-2", omrutils.find_rect_by_ratio(rect_list[1], 80, 25, 1.2, .7))
+    cv2.imshow("rect-1", omrutils.find_rect_by_ratio(rect_list[0], 80, 25, 1.2, .8))
+    cv2.imshow("rect-2", omrutils.find_rect_by_ratio(rect_list[1], 80, 25, 1.2, .8))
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 

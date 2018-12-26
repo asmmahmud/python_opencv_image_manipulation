@@ -141,17 +141,25 @@ def get_min_enclosing_circle(contour):
 
 
 def find_rect_by_ratio(img, upper, lower, aspect_upper, aspect_lower):
-    contours = get_contours(img)
+
     cimg = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    # img = 255 - img
+
+    el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    # img = cv2.erode(img, el, iterations=2)
+    img = cv2.dilate(img, el, iterations=4)
+
+
+    contours = get_contours(img)
     if contours is not None and len(contours) > 0:
         for cnt in contours:
             (x, y, w, h) = cv2.boundingRect(cnt)
             aspect_ratio = w / float(h)
             if lower < w < upper and lower < h < upper and aspect_lower < aspect_ratio < aspect_upper:
-                # center, radius = get_min_enclosing_circle(cnt)
-                # cv2.circle(cimg, center, radius, (0, 255, 0), 2)
+                center, radius = get_min_enclosing_circle(cnt)
+                cv2.circle(img, center, radius, 200, -2)
                 print(x, y, w, h, aspect_ratio)
-                cv2.drawContours(cimg, [cnt], 0, (10, 180, 20), thickness=1)
+                # cv2.drawContours(img, [cnt], 0, 200, thickness=-1)
 
-    return cimg
+    return img
 

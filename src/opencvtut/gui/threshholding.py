@@ -7,7 +7,6 @@ from PIL import ImageTk
 def nothing(x):
 	pass
 
-
 image_path = "../../../resources/img/nid5.jpg"
 
 ori_img = cv2.imread(image_path)

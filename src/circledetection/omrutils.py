@@ -149,7 +149,6 @@ def find_rect_by_ratio(img, upper, lower, aspect_upper, aspect_lower):
     # img = cv2.erode(img, el, iterations=2)
     img = cv2.dilate(img, el, iterations=4)
 
-
     contours = get_contours(img)
     if contours is not None and len(contours) > 0:
         for cnt in contours:

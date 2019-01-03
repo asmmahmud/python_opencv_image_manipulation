@@ -4,7 +4,7 @@ import imutils
 import circledetection.omrutils as omrutils
 
 # img = cv2.imread("../../resources/omr-imgs/mahmud-vai5.png")
-img = cv2.imread("../../resources/omr-imgs/omr-mobile.jpg")
+img = cv2.imread("../../resources/omr-imgs/omr-mobile-1.jpg")
 im_orig = imutils.resize(img, width=1000)[200:, :]
 
 img = cv2.GaussianBlur(im_orig, (5, 5), 8)

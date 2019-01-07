@@ -3,7 +3,7 @@ import imutils
 import cv2
 from matplotlib import pyplot as plt
 
-bgr_img = cv2.imread('../../resources/omr-imgs/omr-1.png')
+bgr_img = cv2.imread('../../resources/omr-imgs/omr-1-ori.png')
 bgr_img = imutils.resize(bgr_img, width=1200)
 gray_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
 # gray_img = cv2.medianBlur(gray_img, 3)

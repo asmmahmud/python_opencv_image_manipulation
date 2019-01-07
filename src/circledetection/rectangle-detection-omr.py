@@ -3,10 +3,12 @@ import imutils
 import cv2
 from matplotlib import pyplot as plt
 
+
 def get_min_rect_points(contour):
     rect = cv2.minAreaRect(contour)
     box = cv2.boxPoints(rect)
     return np.int0(box)
+
 
 def get_min_enclosing_circle(contour):
     (x, y), radius = cv2.minEnclosingCircle(contour)
@@ -14,7 +16,8 @@ def get_min_enclosing_circle(contour):
     radius = int(radius)
     return center, radius
 
-bgr_img = cv2.imread('../../resources/omr-imgs/omr-1-ans.png')
+
+bgr_img = cv2.imread('../../resources/omr-imgs/omr-1-ans-ori.png')
 bgr_img = imutils.resize(bgr_img, width=1200)
 gray_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
 # gray_img = cv2.medianBlur(gray_img, 3)

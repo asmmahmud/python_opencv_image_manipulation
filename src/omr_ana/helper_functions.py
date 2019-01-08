@@ -432,17 +432,17 @@ def is_a_circle(features):
 
     if .80 < features['hull_area_ratio'] <= 1:
         true_for += 1
-    if .60 < features['bounding_area_ratio'] < 1:
+    if .50 < features['bounding_area_ratio'] < 1:
         true_for += 1
-    if 0.025 < features['image_height_ratio'] < 0.05:
+    if 0.020 < features['image_height_ratio'] < 0.08:
         true_for += 1
-    if 0.025 < features['image_width_ratio'] < 0.06:
+    if 0.020 < features['image_width_ratio'] < 0.08:
         true_for += 1
-    if .75 < features['aspect_ratio'] < 1.2:
+    if .65 < features['aspect_ratio'] < 1.4:
         true_for += 1
-    if 30 < features['height'] < 60:
+    if 20 < features['height'] < 70:
         true_for += 1
-    if 30 < features['width'] < 60:
+    if 20 < features['width'] < 70:
         true_for += 1
 
     return true_for == 7
@@ -491,10 +491,9 @@ def get_ans_block(np_array_points, contours_dic, img, row, col, is_debug=False):
 
 
 def operate_on_circle_block(block):
-
     try:
         img = cv2.cvtColor(block, cv2.COLOR_BGR2GRAY)
-        img = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY)[1]
+        img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
         black_img = 255 - img
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
         black_img = cv2.dilate(black_img, kernel, iterations=5)

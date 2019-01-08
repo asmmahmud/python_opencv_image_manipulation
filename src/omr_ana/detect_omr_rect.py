@@ -5,7 +5,7 @@ import imutils
 
 # im_orig = cv2.imread("../../resources/omr-imgs/corner_block.png")
 # im_orig = cv2.imread("../../resources/omr-imgs/rectangle.png")
-file_name = "omr"
+file_name = "omr_m_7"
 im_orig = cv2.imread("../../resources/omr-imgs/final/" + file_name + ".jpg", cv2.IMREAD_COLOR)
 im_orig = imutils.resize(im_orig, width=1200)
 

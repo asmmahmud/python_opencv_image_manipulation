@@ -5,7 +5,7 @@ from omr_ana import helper_functions as omr_utils
 import imutils
 
 start_millis = int(round(time.time() * 1000))
-file_name = "omr_m_5"
+file_name = "omr_m_7"
 # file_name = "omr"
 ori_img = cv2.imread("../../resources/omr-imgs/final/" + file_name + "/output-region.jpg", cv2.IMREAD_COLOR)
 
@@ -34,7 +34,7 @@ left_points_group = []
 middle_points_group = []
 right_points_group = []
 
-print_debug = False
+print_debug = True
 for cnt in contours:
     cnt_feature = omr_utils.get_important_contour_featues(cnt, black_img)
     if omr_utils.is_a_circle(cnt_feature):
@@ -56,7 +56,7 @@ for cnt in contours:
 
         # if print_debug:
         # print("found", cnt_feature)
-    elif print_debug and 30 < cnt_feature['height'] < 50:
+    elif print_debug and 20 < cnt_feature['height'] < 90:
         print("not found", cnt_feature)
 
 final_np_array_points = np.array([])
@@ -67,10 +67,10 @@ np3dArr3 = omr_utils.arrange_points_according_to_question(right_points_group, Fa
 if np3dArr1.shape[0] != 0 and np3dArr2.shape[0] != 0 and np3dArr3.shape[0] != 0:
     final_np_array_points = np.concatenate((np3dArr1, np3dArr2, np3dArr3))
 
-print(final_np_array_points.shape)
+print("final_np_array_points: ", final_np_array_points.shape)
 
 if final_np_array_points.shape[0] != 0:
-    answer_list = np.zeros((final_np_array_points.shape[0], final_np_array_points.shape[1]), dtype=bool)
+    answer_list = np.zeros((final_np_array_points.shape[0], final_np_array_points.shape[1]), dtype='int16')
 
     i_length = final_np_array_points.shape[0]
     j_length = final_np_array_points.shape[1]
@@ -86,15 +86,15 @@ if final_np_array_points.shape[0] != 0:
                 processed_img = omr_utils.operate_on_circle_block(block)
                 if processed_img is not None:
                     mean_value = processed_img.mean()
-                    answer_list[i, j] = 150 < mean_value
-
+                    answer_list[i, j] = mean_value
+                    if 220 < mean_value:
+                        cv2.circle(ori_img, (cx, cy), 20, (10, 10, 200), -1)
             if print_debug:
                 omr_utils.draw_text(ori_img, str(i + 1) + "/" + str(j + 1), final_np_array_points[i, j])
 
     print(answer_list)
 
 if print_debug:
-
     cv2.imshow("thresh_image", img)
 
 cv2.imshow("ori_img", ori_img)

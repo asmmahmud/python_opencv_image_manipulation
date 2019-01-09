@@ -5,6 +5,8 @@ import numpy as np
 
 DETECT_CORNER_POINT = 1
 DETECT_INNER_BOX = 2
+PERCENT = 1
+TRUE_FALSE = 2
 
 CORNER_FEATS = (
     0.322965313273202,
@@ -449,7 +451,7 @@ def is_a_circle(features):
 
 
 # return numpy 3d array of shape(n, 4, 2) or shape(0,) in case of invalid args
-def arrange_points_according_to_question(point_group, is_debug=False, ori_img=None):
+def arrange_points_according_to_question(point_group):
     if len(point_group) == 0:
         return np.array([])
     np_point_group = np.array(point_group)
@@ -465,17 +467,13 @@ def arrange_points_according_to_question(point_group, is_debug=False, ori_img=No
 
     # now sort ponts in individual row according to the columns x coordinates
     i_length = np_point_group.shape[0]
-    j_length = np_point_group.shape[1]
     for i in range(i_length):
         np_point_group[i] = np_point_group[i][np_point_group[i][:, 0].argsort()]
-        if is_debug and ori_img is not None:
-            for j in range(j_length):
-                draw_text(ori_img, str(i + 1) + "/" + str(j + 1), np_point_group[i, j])
 
     return np_point_group
 
 
-def get_ans_block(np_array_points, contours_dic, img, row, col, is_debug=False):
+def get_circle_block(np_array_points, contours_dic, img, row, col, is_debug=False):
     try:
         (cx, cy) = np_array_points[row - 1][col - 1]
         if is_debug:
@@ -490,14 +488,113 @@ def get_ans_block(np_array_points, contours_dic, img, row, col, is_debug=False):
         return None
 
 
-def operate_on_circle_block(block):
+def operate_on_circle_block(block, with_morphology=False):
     try:
         img = cv2.cvtColor(block, cv2.COLOR_BGR2GRAY)
         img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
         black_img = 255 - img
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-        black_img = cv2.dilate(black_img, kernel, iterations=5)
+        if with_morphology:
+            kernel_ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
+            black_img = cv2.erode(black_img, kernel_ellipse, iterations=1)
+
+        # if with_morphology:
+        #     kernel_ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        #     black_img = cv2.erode(black_img, kernel_ellipse, iterations=2)
+        #
+        #     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        #     black_img = cv2.dilate(black_img, kernel, iterations=3)
+
+        # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        # black_img = cv2.dilate(black_img, kernel, iterations=3)
+
         return black_img
 
     except Exception:
         return None
+
+
+def preprocess_image(ori_img):
+    img = cv2.GaussianBlur(ori_img, (5, 5), 8)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    black_img = 255 - img
+    return black_img, img
+
+
+def get_omr_answers(ori_img, question_count=50, result_type=TRUE_FALSE):
+    black_img, img = preprocess_image(ori_img)
+
+    if question_count < 10 or question_count > 50:
+        return None
+
+    num_of_region = math.ceil(question_count / 20.0)
+    region_width = int(img.shape[1] / num_of_region)
+
+    left_region_right_x = region_width + 1
+    middle_region_right_x = (2 * region_width) + 1
+
+    contours = get_contours(black_img, cv2.RETR_EXTERNAL)
+
+    all_detected_contours = {}
+    left_points_group = []
+    middle_points_group = []
+    right_points_group = []
+
+    for cnt in contours:
+        cnt_feature = get_important_contour_featues(cnt, black_img)
+        if is_a_circle(cnt_feature):
+            cx, cy = get_centroid(cnt)
+            all_detected_contours[str(cx) + str(cy)] = cnt
+            if cx < left_region_right_x:
+                left_points_group.append([cx, cy])
+            elif left_region_right_x < cx < middle_region_right_x:
+                middle_points_group.append([cx, cy])
+            elif middle_region_right_x < cx:
+                right_points_group.append([cx, cy])
+
+    final_np_array_points = np.array([])
+    np3dArr1 = arrange_points_according_to_question(left_points_group)
+    np3dArr2 = arrange_points_according_to_question(middle_points_group)
+    np3dArr3 = arrange_points_according_to_question(right_points_group)
+
+    if num_of_region == 3 and np3dArr1.shape[0] != 0 and np3dArr2.shape[0] != 0 and np3dArr3.shape[0] != 0:
+        final_np_array_points = np.concatenate((np3dArr1, np3dArr2, np3dArr3))
+    elif num_of_region == 2 and np3dArr1.shape[0] != 0 and np3dArr2.shape[0] != 0:
+        final_np_array_points = np.concatenate((np3dArr1, np3dArr2))
+    elif num_of_region == 2 and np3dArr1.shape[0] != 0 and np3dArr2.shape[0] != 0:
+        final_np_array_points = np3dArr1
+
+    if final_np_array_points.shape[0] != 0:
+        if result_type == TRUE_FALSE:
+            answer_list = np.zeros((final_np_array_points.shape[0], final_np_array_points.shape[1]), dtype=bool)
+        else:
+            answer_list = np.zeros((final_np_array_points.shape[0], final_np_array_points.shape[1]), dtype='float16')
+
+        i_length = final_np_array_points.shape[0]
+        j_length = final_np_array_points.shape[1]
+
+        for i in range(i_length):
+            for j in range(j_length):
+                (cx, cy) = final_np_array_points[i][j]
+                block14_contour = all_detected_contours[str(cx) + str(cy)]
+                if block14_contour is not None:
+                    (x, y, w, h) = cv2.boundingRect(block14_contour)
+                    block = ori_img[y:y + h, x:x + w]
+                    processed_img = operate_on_circle_block(block)
+
+                    if processed_img is not None:
+                        unique_vals, counts = np.unique(processed_img, return_counts=True)
+                        index_dict = dict(zip(unique_vals, counts))
+                        # mean_value = processed_img.mean()
+
+                        total_pix = processed_img.shape[0] * processed_img.shape[1]
+                        percet_of_white = (index_dict[255] / float(total_pix) * 100)
+                        if result_type == TRUE_FALSE:
+                            answer_list[i, j] = 50 < round(percet_of_white, 2)
+                        else:
+                            answer_list[i, j] = round(percet_of_white, 2)
+
+        return answer_list
+
+    return None

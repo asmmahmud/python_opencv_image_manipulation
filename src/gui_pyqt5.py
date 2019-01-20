@@ -1,91 +1,124 @@
 import sys
 import cv2
-import numpy as np
 import imutils
-from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QLCDNumber, QSlider, QLabel, \
-    QCheckBox, QMainWindow
-from PyQt5.QtGui import QIcon, QPixmap, QImage
-
-from qt_gui.ImgProcessing import ImgProcessing
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-class MyWindow(QWidget):
-
+class MyWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
-        self.imglabel = QLabel(self)
-        self.imglabel.setFixedSize(1200, 900)
-        ori_img = cv2.imread("../resources/omr-1-ans-ori.png", cv2.IMREAD_COLOR)
-        ori_img = imutils.resize(ori_img, height=960)
-        self.gray_img = cv2.cvtColor(ori_img, cv2.COLOR_BGR2GRAY)
-        self.gray_img_c = ori_img
+
+        ori_img = cv2.imread("../../resources/omr-imgs/omr-1-ans-ori.png", cv2.IMREAD_COLOR)
+        self.original_image_color = imutils.resize(ori_img, height=900)
+        self.original_image_gray = cv2.cvtColor(self.original_image_color, cv2.COLOR_BGR2GRAY)
 
         self.thresh = False
+        self.addthresh = False
         self.thresh_karnel_size = 11
+        self.addthresh_c_size = 8
 
         self.init_ui()
 
     def init_ui(self):
-        # lcd = QLCDNumber(self)
-        hbox1 = QHBoxLayout()
-        cb_thresh = QCheckBox('thresh', self)
-        cb_thresh.setChecked(False)
-
+        self.imglabel = QtWidgets.QLabel(alignment=QtCore.Qt.AlignCenter)
+        self.imglabel.setFixedSize(1200, 900)
+        hbox1 = QtWidgets.QHBoxLayout()
+        cb_thresh = QtWidgets.QCheckBox('thresh', checked=False)
         cb_thresh.stateChanged.connect(self.changeTitleThresh)
+        cb_addthresh = QtWidgets.QCheckBox('adapthresh', checked=False)
+        cb_addthresh.stateChanged.connect(self.changeTitleAdapThresh)
         hbox1.addWidget(cb_thresh)
+        hbox1.addWidget(cb_addthresh)
 
-        thresh_slider = QSlider(Qt.Horizontal, self)
-        thresh_slider.setFocusPolicy(Qt.StrongFocus)
-        thresh_slider.setTickPosition(QSlider.TicksBothSides)
-        thresh_slider.setTickInterval(1)
-        thresh_slider.setSingleStep(1)
-        thresh_slider.setPageStep(1)
-        thresh_slider.setMinimum(1)
-        thresh_slider.setMaximum(127)
-        thresh_slider.valueChanged[int].connect(self.threshSliderChangeValue)
+        self.thresh_k_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, focusPolicy=QtCore.Qt.StrongFocus,
+                                                 tickPosition=QtWidgets.QSlider.TicksBothSides,
+                                                 tickInterval=1,
+                                                 singleStep=1,
+                                                 pageStep=1,
+                                                 minimum=1,
+                                                 maximum=255)
+        self.thresh_c_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, focusPolicy=QtCore.Qt.StrongFocus,
+                                                 tickPosition=QtWidgets.QSlider.TicksBothSides,
+                                                 tickInterval=1,
+                                                 singleStep=1,
+                                                 pageStep=1,
+                                                 minimum=1,
+                                                 maximum=100)
+        self.thresh_k_slider.valueChanged[int].connect(self.threshKSliderChangeValue)
+        self.thresh_c_slider.valueChanged[int].connect(self.threshCSliderChangeValue)
 
-        vbox = QVBoxLayout()
+        vbox = QtWidgets.QVBoxLayout(self)
         vbox.addLayout(hbox1)
-        vbox.addWidget(thresh_slider)
-        vbox.addWidget(self.imglabel)
-        self.setLayout(vbox)
+        vbox.addWidget(self.thresh_k_slider)
+        vbox.addWidget(self.thresh_c_slider)
 
-        self.setGeometry(50, 50, 1200, 768)
+        vboxLabels = QtWidgets.QVBoxLayout(self)
+
+        self.k_thresh_label = QtWidgets.QLabel("K val: ", alignment=QtCore.Qt.AlignCenter)
+        self.c_thresh_label = QtWidgets.QLabel("C val: ", alignment=QtCore.Qt.AlignCenter)
+
+        vboxLabels.addWidget(self.k_thresh_label)
+        vboxLabels.addWidget(self.c_thresh_label)
+
+        hbox_image_container = QtWidgets.QHBoxLayout()
+        hbox_image_container.addWidget(self.imglabel)
+        hbox_image_container.addLayout(vboxLabels)
+
+        vbox.addLayout(hbox_image_container)
+
+        # self.threshKSliderChangeValue(self.thresh_k_slider.value())
+        # self.threshCSliderChangeValue(self.thresh_c_slider.value())
+        self.updateImage(self.original_image_color)
+        self.setGeometry(50, 50, 1200, 900)
         self.setWindowTitle('Learning PyQT5')
-        self.updateImage()
         self.show()
 
+    @QtCore.pyqtSlot(int)
     def changeTitleThresh(self, state):
-        # print("thresh checkbox: ", state, Qt.Checked)
-        if state == Qt.Checked:
-            self.thresh = True
-        else:
-            self.thresh = False
+        self.thresh = state == QtCore.Qt.Checked
+        self.threshKSliderChangeValue(self.thresh_k_slider.value())
 
-    def threshSliderChangeValue(self, value):
+    @QtCore.pyqtSlot(int)
+    def changeTitleAdapThresh(self, state):
+        self.addthresh = state == QtCore.Qt.Checked
+        self.threshCSliderChangeValue(self.thresh_c_slider.value())
 
+    @QtCore.pyqtSlot(int)
+    def threshKSliderChangeValue(self, value):
         ksize = (value * 2) + 1
-        print("ksize: ", ksize)
-        if ksize > 1 and ksize % 2 != 0 and self.thresh:
+        if 1 < ksize <= 255 and ksize % 2 != 0 and self.addthresh:
             self.thresh_karnel_size = ksize
-            self.gray_img = cv2.threshold(self.gray_img, self.thresh_karnel_size, 255, cv2.THRESH_BINARY)[1]
-            self.gray_img_c = cv2.cvtColor(self.gray_img.copy(), cv2.COLOR_GRAY2BGR)
-            self.updateImage()
+            self.k_thresh_label.setText("K val: " + str(self.thresh_karnel_size))
+            gray_img = cv2.adaptiveThreshold(self.original_image_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,
+                                             self.thresh_karnel_size, self.addthresh_c_size)
+            gray_img_c = cv2.cvtColor(gray_img, cv2.COLOR_GRAY2BGR)
+            self.updateImage(gray_img_c)
+        elif self.thresh and self.addthresh is not True:
+            self.thresh_karnel_size = value
+            self.k_thresh_label.setText("K val: " + str(self.thresh_karnel_size))
+            _, gray_img = cv2.threshold(self.original_image_gray, self.thresh_karnel_size, 255, cv2.THRESH_BINARY)
+            gray_img_c = cv2.cvtColor(gray_img, cv2.COLOR_GRAY2BGR)
+            self.updateImage(gray_img_c)
 
-    def updateImage(self):
+    @QtCore.pyqtSlot(int)
+    def threshCSliderChangeValue(self, value):
+        if self.addthresh:
+            self.addthresh_c_size = value
+            self.c_thresh_label.setText("C val: " + str(self.addthresh_c_size))
+            gray_img = cv2.adaptiveThreshold(self.original_image_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,
+                                             self.thresh_karnel_size, self.addthresh_c_size)
+            gray_img_c = cv2.cvtColor(gray_img, cv2.COLOR_GRAY2BGR)
+            self.updateImage(gray_img_c)
 
-        height, width, channel = self.gray_img_c.shape
+    def updateImage(self, image):
+        height, width, channel = image.shape
         bytesPerLine = 3 * width
-        qImg = QImage(self.gray_img_c.data, width, height, bytesPerLine, QImage.Format_RGB888)
-        pixMap = QPixmap.fromImage(qImg)
-        pixMap = pixMap.scaled(700, 500, Qt.KeepAspectRatio)
-        self.imglabel.setPixmap(pixMap)
-        self.imglabel.show()
+        qImg = QtGui.QImage(image.data, width, height, bytesPerLine, QtGui.QImage.Format_RGB888)
+        # pixMap = QtGui.QPixmap.fromImage(qImg).scaled(700, 500, QtCore.Qt.KeepAspectRatio)
+        self.imglabel.setPixmap(QtGui.QPixmap.fromImage(qImg))
 
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     ex = MyWindow()
     sys.exit(app.exec_())
